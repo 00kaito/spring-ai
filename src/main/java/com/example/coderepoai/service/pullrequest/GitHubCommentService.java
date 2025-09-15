@@ -19,6 +19,7 @@ public class GitHubCommentService {
     private static final Logger logger = LoggerFactory.getLogger(GitHubCommentService.class);
     
     private final GitHub github;
+    private final boolean isAuthenticatedMode;
     
     public GitHubCommentService(@Value("${github.token:}") String githubToken) {
         try {
@@ -28,13 +29,17 @@ public class GitHubCommentService {
             }
             
             if (token == null || token.trim().isEmpty()) {
-                throw new RepositoryFetchException("GitHub token is required for commenting on pull requests");
+                this.github = null;
+                this.isAuthenticatedMode = false;
+                logger.warn("No GitHub token provided - comment posting will be disabled");
+            } else {
+                this.github = GitHub.connectUsingOAuth(token);
+                this.isAuthenticatedMode = true;
+                logger.info("Connected to GitHub for commenting operations");
             }
             
-            this.github = GitHub.connectUsingOAuth(token);
-            logger.info("Connected to GitHub for commenting operations");
-            
         } catch (IOException e) {
+            logger.error("Failed to connect to GitHub for commenting: {}", e.getMessage());
             throw new RepositoryFetchException("Failed to connect to GitHub for commenting", e);
         }
     }
@@ -43,6 +48,11 @@ public class GitHubCommentService {
      * Post a complete AI code review as comments on a GitHub pull request
      */
     public boolean postCodeReviewComments(String repositoryUrl, CodeReview codeReview) {
+        if (!isAuthenticatedMode) {
+            logger.warn("Cannot post comments - GitHub authentication not available");
+            return false;
+        }
+        
         try {
             String repoPath = extractRepoPathFromUrl(repositoryUrl);
             GHRepository repository = github.getRepository(repoPath);
@@ -253,6 +263,11 @@ public class GitHubCommentService {
      * Post a simple review summary without detailed comments
      */
     public boolean postSimpleReviewSummary(String repositoryUrl, int pullRequestNumber, String summary) {
+        if (!isAuthenticatedMode) {
+            logger.warn("Cannot post comments - GitHub authentication not available");
+            return false;
+        }
+        
         try {
             String repoPath = extractRepoPathFromUrl(repositoryUrl);
             GHRepository repository = github.getRepository(repoPath);

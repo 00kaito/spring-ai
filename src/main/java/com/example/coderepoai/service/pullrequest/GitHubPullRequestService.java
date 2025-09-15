@@ -114,7 +114,7 @@ public class GitHubPullRequestService {
             GHCompare comparison = repository.getCompare(ghPr.getBase().getSha(), ghPr.getHead().getSha());
             
             StringBuilder diffContent = new StringBuilder();
-            for (GHCompare.GHCompareCommit commit : comparison.getCommits()) {
+            for (GHCommit commit : comparison.getCommits()) {
                 diffContent.append("Commit: ").append(commit.getSHA1()).append("\n");
                 diffContent.append("Message: ").append(commit.getCommitShortInfo().getMessage()).append("\n\n");
             }

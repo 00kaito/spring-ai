@@ -130,7 +130,7 @@ public class PullRequestController {
     /**
      * Perform AI code review on a pull request
      */
-    @POST("/{pullRequestNumber}/review")
+    @PostMapping("/{pullRequestNumber}/review")
     public ResponseEntity<Map<String, Object>> reviewPullRequest(
             @RequestParam String repository_url,
             @PathVariable int pullRequestNumber,
@@ -214,7 +214,7 @@ public class PullRequestController {
     /**
      * Post a simple review summary comment to a pull request
      */
-    @POST("/{pullRequestNumber}/comment")
+    @PostMapping("/{pullRequestNumber}/comment")
     public ResponseEntity<Map<String, Object>> postComment(
             @RequestParam String repository_url,
             @PathVariable int pullRequestNumber,
@@ -255,7 +255,7 @@ public class PullRequestController {
     /**
      * Comprehensive endpoint: Review PR and automatically post comments
      */
-    @POST("/review-and-comment")
+    @PostMapping("/review-and-comment")
     public ResponseEntity<Map<String, Object>> reviewAndComment(@RequestBody Map<String, Object> request) {
         String repositoryUrl = (String) request.get("repository_url");
         Integer pullRequestNumber = (Integer) request.get("pull_request_number");
