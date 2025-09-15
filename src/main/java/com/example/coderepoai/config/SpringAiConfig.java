@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,22 +15,15 @@ public class SpringAiConfig {
     private String openaiApiKey;
 
     @Bean
+    @ConditionalOnProperty(name = "spring.ai.openai.api-key")
     public OpenAiChatModel openAiChatModel() {
-        if (openaiApiKey == null || openaiApiKey.trim().isEmpty()) {
-            // Return a mock implementation for development
-            return null;
-        }
-        
         OpenAiApi openAiApi = new OpenAiApi(openaiApiKey);
         return new OpenAiChatModel(openAiApi);
     }
 
     @Bean
+    @ConditionalOnProperty(name = "spring.ai.openai.api-key")
     public ChatClient chatClient(OpenAiChatModel openAiChatModel) {
-        if (openAiChatModel == null) {
-            // Return null when no API key is provided
-            return null;
-        }
         return ChatClient.create(openAiChatModel);
     }
 }
