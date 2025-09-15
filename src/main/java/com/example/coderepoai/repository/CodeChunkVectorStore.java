@@ -46,8 +46,8 @@ public class CodeChunkVectorStore {
         String[] queryWords = query.toLowerCase().split("\\W+");
         String[] contentWords = content.toLowerCase().split("\\W+");
         
-        Set<String> querySet = Set.of(queryWords);
-        Set<String> contentSet = Set.of(contentWords);
+        Set<String> querySet = new HashSet<>(Arrays.asList(queryWords));
+        Set<String> contentSet = new HashSet<>(Arrays.asList(contentWords));
         
         return jaccardSimilarity.apply(String.join(" ", querySet), String.join(" ", contentSet));
     }
