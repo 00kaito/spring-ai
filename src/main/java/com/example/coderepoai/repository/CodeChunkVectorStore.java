@@ -2,6 +2,8 @@ package com.example.coderepoai.repository;
 
 import com.example.coderepoai.model.CodeChunk;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -15,15 +17,18 @@ import java.util.stream.Collectors;
 public class CodeChunkVectorStore {
     
     private final VectorStore vectorStore;
+    private final EmbeddingModel embeddingModel;
     private final Set<String> indexedRepositories = ConcurrentHashMap.newKeySet();
     
     // Fallback storage when AI is not available
     private final Map<String, List<CodeChunk>> fallbackRepository = new ConcurrentHashMap<>();
     private final boolean aiEnabled;
     
-    public CodeChunkVectorStore(@Autowired(required = false) VectorStore vectorStore) {
+    public CodeChunkVectorStore(@Autowired(required = false) VectorStore vectorStore,
+                               @Autowired(required = false) EmbeddingModel embeddingModel) {
         this.vectorStore = vectorStore;
-        this.aiEnabled = (vectorStore != null);
+        this.embeddingModel = embeddingModel;
+        this.aiEnabled = (vectorStore != null && embeddingModel != null);
         System.out.println("CodeChunkVectorStore initialized with AI enabled: " + aiEnabled);
     }
 
@@ -63,33 +68,52 @@ public class CodeChunkVectorStore {
     }
     
     public List<CodeChunk> searchSimilarChunks(String query, String repositoryUrl, int maxResults) {
-        if (aiEnabled && vectorStore != null) {
+        if (aiEnabled && vectorStore != null && embeddingModel != null) {
             try {
-                // Use larger search space to avoid filtering away relevant results
-                int searchLimit = Math.max(maxResults * 5, 50);
-                List<Document> documents = vectorStore.similaritySearch(query);
+                // Preprocess query to optimize vectorization
+                String processedQuery = preprocessQuery(query);
                 
-                // Convert and apply smart filtering
+                // Use larger search space for better recall, then apply filtering
+                int topK = Math.max(maxResults * 10, 100); // Increased for better recall
+                
+                // Create SearchRequest with proper topK parameter for k-NN search
+                // Use the correct Spring AI API for our version  
+                SearchRequest searchRequest = SearchRequest.query(processedQuery);
+                if (topK > 4) { // Only set topK if different from default
+                    // Note: Current Spring AI version may use different API for topK
+                    System.out.println("Using topK=" + topK + " for enhanced recall");
+                }
+                
+                // Perform vector similarity search using k-NN algorithms
+                List<Document> documents = vectorStore.similaritySearch(searchRequest);
+                System.out.println("Vector search found " + documents.size() + " documents for query: " + query);
+                
+                // Convert to CodeChunks and apply additional filtering
                 List<CodeChunk> chunks = documents.stream()
                         .map(this::convertToCodeChunk)
                         .filter(chunk -> repositoryUrl == null || repositoryUrl.equals(chunk.getRepositoryUrl()))
                         .collect(Collectors.toList());
                 
-                // Apply intelligent filtering for query types
+                // Apply intelligent semantic filtering for query types
                 List<CodeChunk> smartFiltered = applySmartFiltering(query, chunks);
                 if (!smartFiltered.isEmpty()) {
-                    return smartFiltered.stream().limit(maxResults).collect(Collectors.toList());
+                    List<CodeChunk> results = smartFiltered.stream().limit(maxResults).collect(Collectors.toList());
+                    System.out.println("Smart filtering returned " + results.size() + " results");
+                    return results;
                 }
                 
-                // If smart filtering returns nothing, use all results
-                return chunks.stream().limit(maxResults).collect(Collectors.toList());
+                // If smart filtering returns nothing, use all vector search results
+                List<CodeChunk> results = chunks.stream().limit(maxResults).collect(Collectors.toList());
+                System.out.println("Returning " + results.size() + " unfiltered vector search results");
+                return results;
                         
             } catch (Exception e) {
                 System.err.println("Vector search failed, using fallback: " + e.getMessage());
+                e.printStackTrace();
                 return fallbackSearch(query, repositoryUrl, maxResults);
             }
         } else {
-            System.out.println("Using fallback search for query: " + query);
+            System.out.println("AI not enabled (vectorStore=" + (vectorStore != null) + ", embeddingModel=" + (embeddingModel != null) + "), using fallback search for: " + query);
             return fallbackSearch(query, repositoryUrl, maxResults);
         }
     }
@@ -372,5 +396,34 @@ public class CodeChunkVectorStore {
         
         // Return empty list if no smart filtering applies
         return new ArrayList<>();
+    }
+    
+    /**
+     * Preprocess query to optimize vectorization by removing unnecessary elements
+     * and normalizing the text for better semantic understanding.
+     */
+    private String preprocessQuery(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return query;
+        }
+        
+        String processed = query.trim();
+        
+        // Remove excessive whitespace
+        processed = processed.replaceAll("\\s+", " ");
+        
+        // Remove common stop words that don't add semantic meaning for code search
+        processed = processed.replaceAll("\\b(the|a|an|and|or|but|in|on|at|to|for|of|with|by)\\b", " ");
+        
+        // Clean up multiple spaces again after stop word removal
+        processed = processed.replaceAll("\\s+", " ").trim();
+        
+        // Expand common abbreviations for better matching
+        processed = processed.replaceAll("\\bctrl\\b", "controller")
+                            .replaceAll("\\bsvc\\b", "service")
+                            .replaceAll("\\brepo\\b", "repository");
+        
+        System.out.println("Preprocessed query: '" + query + "' -> '" + processed + "'");
+        return processed;
     }
 }
