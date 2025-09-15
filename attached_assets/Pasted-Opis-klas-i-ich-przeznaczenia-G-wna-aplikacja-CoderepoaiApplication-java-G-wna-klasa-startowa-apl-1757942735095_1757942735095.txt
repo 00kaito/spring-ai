@@ -1,0 +1,35 @@
+Opis klas i ich przeznaczenia
+Główna aplikacja
+CoderepoaiApplication.java: Główna klasa startowa aplikacji Spring Boot. Zawiera metodę main(), która uruchamia aplikację.
+
+Konfiguracja
+AppConfig.java: Klasa konfiguracyjna, która definiuje ogólne beany dla aplikacji, np. dla ObjectMapper czy innych globalnych komponentów.
+
+SpringAiConfig.java: Konfiguracja specyficzna dla Spring AI. Tutaj można zdefiniować beany takie jak VectorStore (np. ChromaDB lub in-memory), czy EmbeddingModel do generowania wektorów.
+
+Kontroler (warstwa API)
+ChatController.java: Obsługuje żądania HTTP od użytkownika. Zawiera endpointy RESTful, np. /api/chat do zadawania pytań i /api/ingest do inicjowania przetwarzania nowego repozytorium.
+
+Wyjątki
+RepositoryFetchException.java: Niestandardowy wyjątek, używany, gdy wystąpi błąd podczas pobierania repozytorium (np. brak dostępu, nieprawidłowy link).
+
+FileParseException.java: Wyjątek sygnalizujący błąd podczas parsowania plików kodu.
+
+Modele danych
+CodeChunk.java: Prosta klasa POJO, która reprezentuje pojedynczy fragment kodu. Zawiera pola takie jak content (treść fragmentu), filePath (ścieżka do pliku), oraz ewentualnie metadane.
+
+PromptRequest.java: Klasa służąca do mapowania danych z żądań użytkownika, np. z treścią zapytania.
+
+Repozytoria (warstwa danych)
+CodeChunkVectorStore.java: Interfejs lub klasa, która w zależności od wybranej implementacji, będzie odpowiedzialna za operacje na wektorowej bazie danych. Może opakowywać implementację z Spring AI, np. ChromaVectorStore lub InMemoryVectorStore.
+
+Serwisy (logika biznesowa)
+ingestion/RepositoryFetcher.java: Implementuje logikę pobierania kodu z GitHuba lub innej platformy.
+
+ingestion/FileParser.java: Klasa, która analizuje pliki z repozytorium, filtrując te, które mają być indeksowane, i przygotowuje je do dalszego przetwarzania.
+
+ingestion/CodeChunker.java: Dzieli zawartość plików na mniejsze, logiczne fragmenty (chunks), które są optymalne dla generowania wektorów.
+
+chat/RetrievalService.java: Kluczowa klasa w łańcuchu RAG. Odpowiada za pobieranie wektorów z CodeChunkVectorStore na podstawie pytania użytkownika.
+
+chat/ChatService.java: Serwis, który orchestrates cały proces. Przyjmuje pytanie od użytkownika, korzysta z RetrievalService do znalezienia kontekstu, konstruuje prompt i wysyła go do modelu językowego za pomocą Spring AI, a następnie zwraca odpowiedź.
