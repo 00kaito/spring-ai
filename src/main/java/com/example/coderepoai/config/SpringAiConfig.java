@@ -1,8 +1,12 @@
 package com.example.coderepoai.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -25,5 +29,18 @@ public class SpringAiConfig {
     @ConditionalOnProperty(name = "spring.ai.openai.api-key")
     public ChatClient chatClient(OpenAiChatModel openAiChatModel) {
         return ChatClient.create(openAiChatModel);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "spring.ai.openai.api-key")
+    public EmbeddingModel embeddingModel() {
+        OpenAiApi openAiApi = new OpenAiApi(openaiApiKey);
+        return new OpenAiEmbeddingModel(openAiApi);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "spring.ai.openai.api-key")
+    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
+        return new SimpleVectorStore(embeddingModel);
     }
 }
