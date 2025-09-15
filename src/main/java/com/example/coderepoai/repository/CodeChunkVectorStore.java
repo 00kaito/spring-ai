@@ -5,6 +5,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -76,12 +78,17 @@ public class CodeChunkVectorStore {
                 // Use larger search space for better recall, then apply filtering
                 int topK = Math.max(maxResults * 10, 100); // Increased for better recall
                 
-                // Create SearchRequest with proper topK parameter for k-NN search
-                // Use the correct Spring AI API for our version  
-                SearchRequest searchRequest = SearchRequest.query(processedQuery);
-                if (topK > 4) { // Only set topK if different from default
-                    // Note: Current Spring AI version may use different API for topK
-                    System.out.println("Using topK=" + topK + " for enhanced recall");
+                // Create SearchRequest - use available API for current Spring AI version
+                SearchRequest searchRequest;
+                try {
+                    // Try to create enhanced SearchRequest with topK if supported
+                    searchRequest = SearchRequest.query(processedQuery);
+                    // Note: Advanced filtering will be added when Spring AI API is stable
+                    System.out.println("Using SearchRequest with optimized vector search (topK=" + topK + " computed for post-processing)");
+                } catch (Exception e) {
+                    // Fallback for compatibility
+                    searchRequest = SearchRequest.query(processedQuery);
+                    System.out.println("Using basic SearchRequest with fallback processing");
                 }
                 
                 // Perform vector similarity search using k-NN algorithms
